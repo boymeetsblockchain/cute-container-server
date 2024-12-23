@@ -4,7 +4,9 @@ const authRoute = require("./routes/auth.route");
 const db = require("./config/db");
 const errorHandler = require("./middlewares/errorHandler");
 const cors = require("cors");
+const userRoute = require("./routes/user.route");
 
+const cookieParser = require("cookie-parser");
 const PORT = process.env.PORT || 5000;
 const app = express();
 
@@ -22,8 +24,11 @@ app.use(
   })
 );
 
+app.use(cookieParser());
+
 // Routes
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/user", userRoute);
 
 app.get("/", (req, res) => {
   res.status(200).json({

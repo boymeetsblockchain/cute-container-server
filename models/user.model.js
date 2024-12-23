@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    password: {
+      type: String,
+    },
     email: {
       type: String,
       unique: true,
@@ -39,7 +42,9 @@ const userSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
+      enum: ["Male", "Female", "Others"],
     },
+
     interests: {
       type: [String],
       default: [],
@@ -54,6 +59,22 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    matchedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    matchRequests: [
+      {
+        senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        status: {
+          type: String,
+          enum: ["pending", "accepted", "rejected"],
+          default: "pending",
+        },
+      },
+    ],
   },
   {
     timestamps: true,

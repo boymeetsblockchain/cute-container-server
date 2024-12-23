@@ -254,6 +254,7 @@ const updateProfile = asyncHandler(async (req, res) => {
         about: user.about,
         gallery: user.gallery,
         interests: user.interests,
+        gender: user.gender,
       },
     });
   } catch (error) {
@@ -287,6 +288,7 @@ const createPassword = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
     res.status(400).json({
       message: "Please Fill in All fields",
@@ -303,6 +305,8 @@ const loginUser = asyncHandler(async (req, res) => {
       message: "Please Verify Your Email",
     });
   }
+
+  console.log(existingUser);
 
   const isPasswordCorrect = await compare(password, existingUser.password);
 
@@ -331,6 +335,99 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid email or password");
   }
 });
+
+const getUser = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  if (!userId) {
+    return res.status(401).json({
+      message: "User not authorized",
+    });
+  }
+  try {
+    const user = await User.findById(userId).select("-password");
+    return res.status(200).json({
+      message: "User detailed fecthed",
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+
+    // Handle potential errors
+    return res.status(500).json({
+      message: "An error occurred while getting user",
+      error: error.message,
+    });
+  }
+});
+
+const gallery = asyncHandler(async (req, res) => {
+  const userId = req.user && req.user._id; // Safely check for `req.user`
+
+  if (!userId) {
+    return res.status(401).json({
+      message: "User not authorized",
+    });
+  }
+
+  // Check if image files are provided
+  if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+    return res.status(400).json({
+      message: "No image files provided",
+    });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // Upload files to Cloudinary
+    const imageUploadPromises = req.files.map((file) =>
+      cloudinary.uploader.upload(file.path, {
+        folder: "cute-container",
+        use_filename: true,
+      })
+    );
+
+    const uploadedImages = await Promise.all(imageUploadPromises);
+
+    // Extract URLs
+    const imageUrls = uploadedImages.map((image) => image.secure_url);
+
+    // Append to existing gallery instead of overwriting
+    user.gallery = [...user.gallery, ...imageUrls];
+
+    await user.save();
+
+    // Cleanup temporary files
+    req.files.forEach((file) => fs.unlinkSync(file.path));
+
+    res.status(200).json({
+      message: "Gallery successfully updated",
+      gallery: user.gallery,
+    });
+  } catch (error) {
+    console.error("Error updating gallery:", error);
+
+    // Cleanup temporary files even if an error occurs
+    if (req.files) {
+      req.files.forEach((file) => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+
+    res.status(500).json({
+      message: "An error occurred while updating the gallery",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = {
   generateOtp,
   verifyOtp,
@@ -339,4 +436,6 @@ module.exports = {
   createProfile,
   updateProfile,
   loginUser,
+  getUser,
+  gallery,
 };
