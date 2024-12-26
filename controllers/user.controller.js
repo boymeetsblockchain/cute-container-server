@@ -17,6 +17,38 @@ const getAllUsers = asyncHandler(async (req, res) => {
   }
 });
 
+const getAllUsersExceptMeAndOppositeGender = asyncHandler(async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const currentUser = await User.findById(currentUserId);
+
+    if (!currentUser || !currentUser.gender) {
+      return res.status(400).json({
+        message: "User not found or gender not specified",
+      });
+    }
+
+    // Assuming gender is stored as "male" or "female" in the user model
+    const oppositeGender = currentUser.gender === "Male" ? "Female" : "Male";
+
+    const users = await User.find({
+      _id: { $ne: currentUserId },
+      gender: oppositeGender,
+    }).select("-otp -otpExpires -__v -password");
+
+    res.status(200).json({
+      message:
+        "Users retrieved successfully (excluding current user and matching opposite gender)",
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "An error occurred while retrieving users",
+      error: error.message,
+    });
+  }
+});
+
 // Get Single User
 const getSingleUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -199,4 +231,5 @@ module.exports = {
   sendMatchRequest,
   handleMatchRequest,
   getMatchedUsers,
+  getAllUsersExceptMeAndOppositeGender,
 };

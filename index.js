@@ -5,10 +5,15 @@ const db = require("./config/db");
 const errorHandler = require("./middlewares/errorHandler");
 const cors = require("cors");
 const userRoute = require("./routes/user.route");
+const socketIo = require("socket.io");
+const http = require("http");
 
 const cookieParser = require("cookie-parser");
 const PORT = process.env.PORT || 5000;
 const app = express();
+
+const server = http.createServer(app);
+const io = socketIo(server);
 
 // Middlewares
 app.use(express.json());
@@ -38,9 +43,17 @@ app.get("/", (req, res) => {
 
 app.use(errorHandler);
 
+io.on("connection", (socket) => {
+  console.log("New client connected");
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+  });
+});
+
 db()
   .then(() => {
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
   })
